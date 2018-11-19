@@ -28,30 +28,57 @@ document.body.appendChild(pages);
 const input = document.querySelector('.input');
 
 const searchButton = document.querySelector('.search-btn');
+const searchRequest = () => {
+    const url = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&q=${input.value}&part=snippet&type=video&maxResults=${CLIPS_NUMBER*5}`;
+
+    fetch(url)
+        .then(function(response){
+            return response.json();
+        }).then(data => {
+        if(data.items.length > 0) {
+            DATA = data;
+        } else {
+            alert('dahuya hotel');
+            DATA = {};
+        }
+
+        })
+        .then(() =>{
+            let keys = DATA.items.map((value) => value.id.videoId).join(',');
+            const views = `https://www.googleapis.com/youtube/v3/videos?key=${API_KEY}&id=${keys}&part=snippet,statistics`;
+            console.log(keys);
+            fetch(views)
+                .then(function(response){
+                    return response.json();
+                }).then(data => {
+                    DATA.items.forEach((item, key) =>{
+                        item.statistics = data.items[key].statistics;
+                    });
+                    renderPage();
+            })
+        })
+};
+searchButton.onclick = () => searchRequest();
 
 window.addEventListener('keydown', (e) => {
   if (e.keyCode === 13) {
-    const url = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&q=${input.value}&part=snippet&type=video&maxResults=${CLIPS_NUMBER*5}`; 
-    fetch(url)
-      .then(function(response){
-    return response.json();
-    }).then(data =>{
-      DATA = data;
-      clips.innerHTML='';
-
-      data.items.forEach((item, index) =>{
-        if(index>indexCurrentPage*5 && index<indexCurrentPage*5+5) {
-          clips.appendChild(renderClip(item));
-        }
-        
-      });
-      document.body.appendChild(renderPaging(data));
-    });
-
-      
-    
+    searchRequest();
   }
 });
+
+const renderPage = () => {
+    clips.innerHTML='';
+
+    DATA.items.forEach((item, index) => {
+        if(index>indexCurrentPage * 5 && index < indexCurrentPage * 5 + 5) {
+            clips.appendChild(renderClip(item));
+        }
+    });
+    if(clips.childNodes.length === 0) {
+        clips.innerHTML = "<span>Loading...</span>";
+    }
+    document.body.appendChild(renderPaging(DATA));
+};
 
 const renderClip = (item) => {
         const clip = document.createElement('div');
@@ -62,13 +89,14 @@ const renderClip = (item) => {
         <div class="video-info"> 
           <div class="channel-name"><i class="fas fa-male"></i><span>${item.snippet.channelTitle}</span></div>
           <div class="date"><i class="far fa-calendar-alt"></i><span>${item.snippet.publishedAt.slice(0,10)}</span></div>
+          <div class="views"><i class="fas fa-male"></i><span>${item.statistics.viewCount}</span></div>
           <p>${item.snippet.description}</p>
         </div>`;
 
         return clip;
 };
 
-const renderPaging = (data) =>{
+const renderPaging = (data) => {
   pages.innerHTML = '';
   if(data.pageInfo.totalResults> CLIPS_NUMBER){
     let startIndex = indexCurrentPage < 2 ? 0 : indexCurrentPage - 2;
@@ -82,14 +110,14 @@ const renderPaging = (data) =>{
   return pages;
 };
 
-const renderDot = (count) =>{
+const renderDot = (count) => {
   let dot = document.createElement('span');
   dot.className = 'dot';
   dot.innerHTML = count;
   if(count === indexCurrentPage){
     dot.classList.add('selected');
   }
-  dot.onclick = ()=> onClickHandler(count); 
+  dot.onclick = () => onClickHandler(count);
   return dot; 
 };
 
@@ -99,7 +127,8 @@ const onClickHandler = (count) =>{
     renderPaging(DATA);
   }
   indexCurrentPage = count;
-  if(DATA.items.length - indexCurrentPage*5 < 10){
+  renderPage();
+  if(DATA.items.length - indexCurrentPage * 5 < 10){
     loadData();
   }
 };
@@ -109,11 +138,23 @@ const loadData = () =>{
   fetch(url)
   .then(function(response){
     return response.json();
-    }).then( data =>{
-      console.log(data);
-    }
-
-    );
+    }).then( data => {
+        DATA = {...DATA, items: [...DATA.items, ...data.items], nextPageToken: data.nextPageToken};
+    })
+      .then(() =>{
+          let keys = DATA.items.map((value) => value.id.videoId).join(',');
+          const views = `https://www.googleapis.com/youtube/v3/videos?key=${API_KEY}&id=${keys}&part=snippet,statistics`;
+          console.log(keys);
+          fetch(views)
+              .then(function(response){
+                  return response.json();
+              }).then(data => {
+              DATA.items.forEach((item, key) =>{
+                  item.statistics = data.items[key].statistics;
+              });
+              renderPage();
+          })
+      })
 };
 
 
