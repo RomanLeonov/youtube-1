@@ -43,10 +43,9 @@ const searchRequest = () => {
         }
 
         })
-        .then(() =>{
+        .then(() => {
             let keys = DATA.items.map((value) => value.id.videoId).join(',');
             const views = `https://www.googleapis.com/youtube/v3/videos?key=${API_KEY}&id=${keys}&part=snippet,statistics`;
-            console.log(keys);
             fetch(views)
                 .then(function(response){
                     return response.json();
@@ -55,7 +54,7 @@ const searchRequest = () => {
                         item.statistics = data.items[key].statistics;
                     });
                     renderPage();
-            })
+            });
         })
 };
 searchButton.onclick = () => searchRequest();
@@ -133,28 +132,28 @@ const onClickHandler = (count) =>{
   }
 };
 
-const loadData = () =>{
+const loadData = () => {
   const url = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&q=${input.value}&part=snippet&type=video&maxResults=${CLIPS_NUMBER*5}&pageToken=${DATA.nextPageToken}`;
   fetch(url)
   .then(function(response){
     return response.json();
     }).then( data => {
-        DATA = {...DATA, items: [...DATA.items, ...data.items], nextPageToken: data.nextPageToken};
+        const keys = data.items.map((elem) => elem.id.videoId).join(',');
+        DATA = {...DATA, nextPageToken: data.nextPageToken};
+        const views = `https://www.googleapis.com/youtube/v3/videos?key=${API_KEY}&id=${keys}&part=snippet,statistics`;
+        fetch(views)
+          .then(function(response){
+              return response.json();
+          }).then(data => {
+          data.items.forEach((item, key) =>{
+              item.statistics = data.items[key].statistics;
+          });
+          return data;
+        }).then (data => {
+            DATA = {...DATA, items: [...DATA.items, ...data.items]};
+            renderPage();
+        })
     })
-      .then(() =>{
-          let keys = DATA.items.map((value) => value.id.videoId).join(',');
-          const views = `https://www.googleapis.com/youtube/v3/videos?key=${API_KEY}&id=${keys}&part=snippet,statistics`;
-          console.log(keys);
-          fetch(views)
-              .then(function(response){
-                  return response.json();
-              }).then(data => {
-              DATA.items.forEach((item, key) =>{
-                  item.statistics = data.items[key].statistics;
-              });
-              renderPage();
-          })
-      })
 };
 
 
